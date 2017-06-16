@@ -1,0 +1,16 @@
+{
+    "aws": {
+        "access_key": "REPLACE_ME",
+        "secret_key": "REPLACE_ME",
+        "associate_tag": "REPLACE_ME"
+    },
+
+    "files": {
+        "input": "input.txt",
+        "output": "output.txt"
+    },
+
+    "title_patterns": [
+        "^$"
+    ]
+}

@@ -1,3 +1,6 @@
 # Input/output files
 *.txt
 *.csv
+
+# IDE
+.vscode/
