@@ -25,72 +25,63 @@ def main(argv):
 	with open(config['files']['input']) as f:
 		for line in f:
 			# Extract Author - Title
-			matches = None
+			author = None
+			title = None
 			for pattern in config['title_patterns']:
-				matches = re.search('REPLACE', line) 
-				if matches is not None:
-					break
-			
-			if matches is None:
+				matches = re.search(pattern, line) 
+
+				# No match -> try again
+				if matches is None:
+					continue
+
+				# Sanity checks on match
+				grps = m.groups()
+				if grps is None:
+					continue
+				
+				# Correct lengths
+				if len(grps) != 2:
+					continue
+
+				# Extract
+				author = grps[0].strip()
+				title = grps[1].strip()
+
+			# Did we get a hit? If not, skip this line
+			if matches is None or author is None or title is None:
 				debug('No matches for:', line, end='')
 				unknowns.append({
 					'line': line,
-					'author': None,
-					'title': None
+					'author': author,
+					'title': title
 				})
 				continue
-
-			# Sanity checks
-			grps = m.groups()
-			if grps is None:
-				debug('Groups error for line: ', line, end='')
-				unknowns.append({
-					'line': line,
-					'author': None,
-					'title': None
-				})
-				continue
-			
-			# Correct lengths
-			if len(grps) != 2:
-				debug('Invalid extraction. Got: ', grps, ' for line: ', line, end='')
-				unknowns.append({
-					'line': line,
-					'author': None,
-					'title': None
-				})
-				continue
-
-			author = grps[0].strip()
-			title = grps[1].strip()
 
 			debug('Lookup "', title, '" by ', author, sep='')
+			product = None
 			try:
+				# Do that spicy lookup
 				products = amazon.search_n(1, Power='author:{} and title:{}'.format(author, title), SearchIndex='Books')
-				if products is None or len(products) < 1:
-					debug('\tNo matches')
-					unknowns.append({
-						'line': line,
-						'author': author,
-						'title': title
-					})
+				if products is not None or len(products) > 0:
+					product = products[0]
 					continue
 				
-				product = products[0]
-				if product is None:
-					debug('\tEmpty match')
-					unknowns.append({
-						'line': line,
-						'author': author,
-						'title': title
-					})
-					continue
-
-				debug('\tRank = ', product.sales_rank, ', Pages = ', product.pages, ', Pubdate = ', product.publication_date, sep='')
-				items.append(product)
+				# Sanity check
+				if product is not None:
+					debug('\tRank = ', product.sales_rank, ', Pages = ', product.pages, ', Pubdate = ', product.publication_date, sep='')
+					items.append(product)
 			except:
 				debug('\tSearch failed')
-	
+			
+			# Handle not found
+			if product is None:
+				debug('\tEmpty match')
+				unknowns.append({
+					'line': line,
+					'author': author,
+					'title': title
+				})
+
 	# Sort
 	items.sort(key=lambda x: x.sales_rank)
 
