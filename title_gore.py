@@ -2,10 +2,12 @@
 import sys
 import re
 import getopt
-
 import json
 
 from amazon.api import AmazonAPI
+
+# Globals
+_DEBUG = False
 
 # Main function
 #   argv - Variable list of arguments
@@ -15,7 +17,11 @@ def main(argv):
 
 	# Load up apis
 	amazon = AmazonAPI(config['aws']['access_key'], config['aws']['secret_key'], config['aws']['associate_tag'])
+
+	# Parse 'em
 	items = []
+	last_item = None
+	unknowns = []
 	with open(config['files']['input']) as f:
 		for line in f:
 			# Extract Author - Title
@@ -26,62 +32,107 @@ def main(argv):
 					break
 			
 			if matches is None:
-				print('No matches for:', line)
+				debug('No matches for:', line, end='')
+				unknowns.append({
+					'line': line,
+					'author': None,
+					'title': None
+				})
 				continue
 
 			# Sanity checks
 			grps = m.groups()
 			if grps is None:
-				print('Groups error for line: ', line, end='')
+				debug('Groups error for line: ', line, end='')
+				unknowns.append({
+					'line': line,
+					'author': None,
+					'title': None
+				})
 				continue
 			
 			# Correct lengths
 			if len(grps) != 2:
-				print('Invalid extraction. Got: ', grps, ' for line: ', line, end='')
+				debug('Invalid extraction. Got: ', grps, ' for line: ', line, end='')
+				unknowns.append({
+					'line': line,
+					'author': None,
+					'title': None
+				})
 				continue
 
 			author = grps[0].strip()
 			title = grps[1].strip()
 
-			print('Lookup "', title, '" by ', author, sep='')
+			debug('Lookup "', title, '" by ', author, sep='')
 			try:
 				products = amazon.search_n(1, Power='author:{} and title:{}'.format(author, title), SearchIndex='Books')
 				if products is None or len(products) < 1:
-					print('\tNo matches')
+					debug('\tNo matches')
+					unknowns.append({
+						'line': line,
+						'author': author,
+						'title': title
+					})
 					continue
 				
 				product = products[0]
 				if product is None:
-					print('\tEmpty match')
+					debug('\tEmpty match')
+					unknowns.append({
+						'line': line,
+						'author': author,
+						'title': title
+					})
 					continue
 
-				print('\tRank = ', product.sales_rank, ', Pages = ', product.pages, ', Pubdate = ', product.publication_date, sep='')
+				debug('\tRank = ', product.sales_rank, ', Pages = ', product.pages, ', Pubdate = ', product.publication_date, sep='')
 				items.append(product)
 			except:
-				print('\tSearch failed')
+				debug('\tSearch failed')
 	
 	# Sort
 	items.sort(key=lambda x: x.sales_rank)
-	with open('output.txt', 'w') as w:
-		for item in items:
-			w.write('rank={}, asin={}, title={}, pages={}, published={}'.format(item.sales_rank, item.asin, item.tile, item.pages, item.publication__date))
 
+	# Output
+	w = None
+	if config['files']['output'] is not None:
+		w = open(config['files']['output'], 'w')
+	else:
+		w = sys.stdout
+
+	# Spit ranked items first, then not founds
+	for item in items:
+		w.write('rank={}, asin={}, title={}, pages={}, published={}\r\n'.format(item.sales_rank, item.asin, item.tile, item.pages, item.publication__date))
+	for unknown in unknowns:
+			w.write('rank={}, author={}, title={}, line={}\r\n'.format(None, None, unknown['author'], unknown['title'], unknown['line']))
 
 # Load config data
-# 	config_filename - The filename of the config to load
+# 	Inputs
+# 		config_filename - The filename of the config to load
+#	Outputs
+#		config - Configuration dictionary
 def load_config(config_filename):
 	with open(config_filename) as config_json:
 		return json.load(config_json)
 
+# Prints out usage information
 def usage():
-	print("Usage here");
+	print("Usage here")
+
+# Debug printing
+# 	Inputs
+# 		args - Variable number of args to print
+def debug(*args, end=None, sep=None):
+	if _DEBUG:
+		print(*args, end=end, sep=sep)
 
 # Parse command line arguments
 # 		Jesus this is a long function, but it's my first python script to w/evs
 #	Inputs
 #		argv - Arguments from CLI
 #	Outputs
-#		config - The configuration oibject
+#		config - Configuration dictionary
 #	Exceptions
 #		Invalid parsing
 def parse_args(argv):
@@ -122,7 +173,7 @@ def parse_args(argv):
 		# Debug
 		if opt in ('-d', '--debug'):
 			global _DEBUG
-			_DEBUG = 1
+			_DEBUG = True
 		
 		# Config
 		elif opt in ('-c', '--config'):
