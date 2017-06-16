@@ -12,7 +12,6 @@ from amazon.api import AmazonAPI
 def main(argv):
 	# Configuration data
 	config = parse_args(sys.argv)
-	print(config)
 
 	# Load up apis
 	amazon = AmazonAPI(config['aws']['access_key'], config['aws']['secret_key'], config['aws']['associate_tag'])
@@ -20,9 +19,14 @@ def main(argv):
 	with open(config['files']['input']) as f:
 		for line in f:
 			# Extract Author - Title
-			m = re.search('REPLACE', line) 
-			if m is None:
-				print('No matches for line: ', line, end='')
+			matches = None
+			for pattern in config['title_patterns']:
+				matches = re.search('REPLACE', line) 
+				if matches is not None:
+					break
+			
+			if matches is None:
+				print('No matches for:', line)
 				continue
 
 			# Sanity checks
