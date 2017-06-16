@@ -8,9 +8,13 @@ from amazon.api import AmazonAPI
 
 # Globals
 _DEBUG = False
+DefaultInputFilename = 'input.txt'
+DefaultOutputFilename = 'output.txt'
+DefaultConfigFilename = 'config.json'
 
 # Main function
-#   argv - Variable list of arguments
+# 	Inputs	
+#   	argv - Variable list of arguments
 def main(argv):
 	# Configuration data
 	config = parse_args(sys.argv)
@@ -109,7 +113,19 @@ def load_config(config_filename):
 
 # Prints out usage information
 def usage():
-	print("Usage here")
+	print()
+	print("title_gore.py [OPTIONS] title_pattern title_pattern ..")
+	# Generic
+	print('', '-h', '--help', '', 'Print usage information', sep='\t')
+	# Config
+	print('', '-c', '--config', 'Configuration input file. Contains these OPTIONS [Default: "{}"]'.format(DefaultConfigFilename), sep='\t')
+	# Files
+	print('', '-f', '--filename', 'Input filename (required) [Default: "{}"]'.format(DefaultInputFilename), sep='\t')
+	print('', '-o', '--outfile', 'Output filename [Default: "{}"]'.format(DefaultOutputFilename), sep='\t')
+	# AWS
+	print('', '-a', '--access_key', 'AWS access key (required)', sep='\t')
+	print('', '-s', '--secret_key', 'AWS secret key (required)', sep='\t')
+	print('', '-t', '--associate_tag', 'AWS associate tag (required)', sep='\t')
 
 # Debug printing
 # 	Inputs
@@ -127,9 +143,6 @@ def debug(*args, end=None, sep=None):
 #	Exceptions
 #		Invalid parsing
 def parse_args(argv):
-	DefaultInputFilename = 'input.txt'
-	DefaultOutputFilename = 'output.txt'
-	DefaultConfigFilename = 'config.json'
 	try:
 		opts, args = getopt.getopt(argv[1:], 'hdc:f:o:a:s:t:', [
 			'help',
